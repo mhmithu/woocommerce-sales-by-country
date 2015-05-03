@@ -3,8 +3,8 @@ Contributors: mitcmt
 Plugin Site: http://mithu.me/
 Tags: woocommerce, report, sales, country
 Requires at least: 3.5
-Tested up to: 3.9.1
-Stable tag: 1.1.0
+Tested up to: 4.1.1
+Stable tag: 1.2
 
 An additional report page for WooCommerce shop to display country wise product sales report from admin panel.
 
@@ -42,6 +42,12 @@ WooCommerce Sales by Country simply adds a report page to display country specif
 
 
 == Changelog ==
+
+= v1.2 (29.03.2015) =
+* Fixed - some bugs.
+* Moved - screenshot to assets.
+* Added - support for WooCommerce-2.1.0 or later.
+* Tested - compatibility up to WP-4.1.1
 
 = v1.1.0 (15.05.2014) =
 * Added - support for WooCommerce version 2.1.0 or later.
