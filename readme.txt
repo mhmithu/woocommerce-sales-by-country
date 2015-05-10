@@ -4,7 +4,7 @@ Plugin Site: http://mithu.me/
 Tags: woocommerce, report, sales, country
 Requires at least: 3.5
 Tested up to: 4.1.1
-Stable tag: 1.2
+Stable tag: 1.3
 
 An additional report page for WooCommerce shop to display country wise product sales report from admin panel.
 
@@ -42,6 +42,14 @@ WooCommerce Sales by Country simply adds a report page to display country specif
 
 
 == Changelog ==
+
+= v1.3 (10.05.2015) =
+* Added - new feature date range selector.
+* Added - datepicker in selector field.
+* Updated - some tweak.
+* Modified - code to WP standards.
+* Tested - compatibility up to WooCommerce-2.3.8
+* Tested - compatibility up to WP-4.1.1
 
 = v1.2 (29.03.2015) =
 * Fixed - some bugs.
