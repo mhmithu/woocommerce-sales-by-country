@@ -3,7 +3,7 @@
  * Plugin Name: WooCommerce Sales by Country
  * Plugin URI: https://github.com/mhmithu/woocommerce-sales-by-country
  * Description: Adds a report page to display country specific product sales report.
- * Version: 1.3
+ * Version: 1.4
  * Author: MH Mithu
  * Author URI: http://mithu.me/
  * License: GNU General Public License v3.0
@@ -28,27 +28,44 @@
  */
 
 
-if ( in_array( 'woocommerce/woocommerce.php', get_option( 'active_plugins' ) ) ) {
+// Including WP core file
+if ( ! function_exists( 'get_plugins' ) )
+    require_once ABSPATH . 'wp-admin/includes/plugin.php';
+
+// Including base class
+if ( ! class_exists( 'WSC_Country_Sales' ) )
+    require_once plugin_dir_path( __FILE__ ) . 'class-wsc-country-sales.php';
 
 
-    function is_wc_new() {
-        if ( !function_exists( 'get_plugins' ) )
-            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+// Whether plugin active or not
+if ( is_plugin_active( 'woocommerce/woocommerce.php' ) ) :
 
-        $plugin_folder = get_plugins( '/' . 'woocommerce' );
-        $plugin_file   = 'woocommerce.php';
+    // Post data
+    $start_date = isset( $_POST['start_date'] ) ? $_POST['start_date'] : '';
+    $end_date   = isset( $_POST['end_date'] ) ? $_POST['end_date'] : '';
 
-        if ( isset( $plugin_folder[$plugin_file]['Version'] ) ) {
-            $version = $plugin_folder[$plugin_file]['Version'];
-        } else {
-            $version = null;
-        }
-        return version_compare( $version, '2.1', 'gt' );
-    }
+    // Fallback
+    if ( ! $start_date )
+        $start_date = date( 'Ymd', strtotime( date( 'Ym', current_time( 'timestamp' ) ) . '01' ) );
 
+    if ( ! $end_date )
+        $end_date = date( 'Ymd', current_time( 'timestamp' ) );
 
-    if ( is_wc_new() ) {
+    // Timestamps
+    $start_date = strtotime( $start_date );
+    $end_date   = strtotime( $end_date );
 
+    // The object
+    $wsc = new WSC_Country_Sales( $start_date, $end_date );
+
+    if ( ! $wsc->is_wc_old() ) :
+
+        /**
+         * WooCommerce hook
+         *
+         * @param array   $reports
+         * @return array
+         */
         function sales_by_country( $reports ) {
             $reports['orders']['reports']['sales_by_country'] = array(
                 'title'       => 'Sales by country',
@@ -61,50 +78,14 @@ if ( in_array( 'woocommerce/woocommerce.php', get_option( 'active_plugins' ) ) )
         add_filter( 'woocommerce_admin_reports', 'sales_by_country' );
 
 
+        /**
+         * Function to hook into WooCommerce
+         * 
+         * @return string
+         */
         function wc_country_sales() {
-
-            global $wpdb;
-
-            $start_date = isset( $_POST['start_date'] ) ? $_POST['start_date'] : '';
-            $end_date   = isset( $_POST['end_date'] ) ? $_POST['end_date'] : '';
-
-            if ( !$start_date )
-                $start_date = date( 'Ymd', strtotime( date( 'Ym', current_time( 'timestamp' ) ) . '01' ) );
-
-            if ( !$end_date )
-                $end_date = date( 'Ymd', current_time( 'timestamp' ) );
-
-            $start_date = strtotime( $start_date );
-            $start_date = date( 'Y-m-d', $start_date );
-
-            $end_date   = strtotime( $end_date );
-            $end_date   = date( 'Y-m-d', strtotime( '+1 day', $end_date ) );
-
-            $sql = "SELECT country.meta_value AS country_name,
-                    SUM(order_item_meta.meta_value) AS sale_total
-                    FROM {$wpdb->prefix}woocommerce_order_items AS order_items
-
-                    LEFT JOIN {$wpdb->prefix}woocommerce_order_itemmeta AS order_item_meta
-                        ON order_items.order_item_id = order_item_meta.order_item_id
-                    LEFT JOIN {$wpdb->postmeta} AS country
-                        ON order_items.order_id = country.post_id
-                    LEFT JOIN {$wpdb->posts} AS posts
-                        ON order_items.order_id = posts.ID
-
-                    WHERE posts.post_type             = 'shop_order'
-                    AND   country.meta_key            = '_billing_country'
-                    AND   order_item_meta.meta_key    = '_line_total'
-                    AND   order_items.order_item_type = 'line_item'
-                    AND   posts.post_date            >= '$start_date'
-                    AND   posts.post_date             < '$end_date'
-                    AND   posts.post_status IN ('wc-processing','wc-on-hold','wc-completed')
-                    GROUP BY country.meta_value";
-
-
-            $results = $wpdb->get_results( $sql );
-            $country = new WC_Countries;
+            global $wsc;
 ?>
-
             <br />
             <form method="post">
                 <label>Select date range:</label>
@@ -113,73 +94,57 @@ if ( in_array( 'woocommerce/woocommerce.php', get_option( 'active_plugins' ) ) )
                 <input type="submit" class="button" value="Go" />
             </form>
             <br />
-            <table class="widefat">
-            <thead>
-                <tr>
-                    <th>Country Name</th>
-                    <th>Sale Total</th>
-                </tr>
-            </thead>
-            <tbody>
-        <?php
-            foreach ( $results as $result ) {
-?>
-                <tr>
-                    <td><?php echo $country->countries[$result->country_name]; ?></td>
-                    <td><?php echo get_woocommerce_currency_symbol().$result->sale_total; ?></td>
-                </tr>
-        <?php
+            <table class="wp-list-table widefat fixed posts">
+                <thead>
+                    <tr>
+                        <th>Country Name</th>
+                        <th>Sale Total</th>
+                    </tr>
+                </thead>
 
-            }
-?>
-            </tbody>
+                <tbody>
+                <?php foreach ( $wsc->get_country_sales() as $view ) : ?>
+                    <tr>
+                        <td><?php echo $wsc->country_name( $view->country_name ); ?></td>
+                        <td><?php echo get_woocommerce_currency_symbol() . $view->sale_total; ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
             </table>
-
-            <script>
-                jQuery(".wsc_datepicker").datepicker({
-                        changeMonth: true,
-                        changeYear: true,
-                        defaultDate: "",
-                        dateFormat: "yy-mm-dd",
-                        numberOfMonths: 1,
-                        maxDate: "+0D",
-                        showButtonPanel: true,
-                        showOn: "focus",
-                        buttonImageOnly: true,
-                        onSelect: function( selectedDate ) {
-                            var option = jQuery(this).is('.from') ? "minDate" : "maxDate",
-                                instance = jQuery(this).data("datepicker"),
-                                date = jQuery.datepicker.parseDate(
-                                    instance.settings.dateFormat ||
-                                    jQuery.datepicker._defaults.dateFormat,
-                                    selectedDate, instance.settings);
-                            dates.not(this).datepicker("option", option, date);
-                        }
-                    });
-            </script>
 
     <?php
 
         }
 
-    } else {
+    else :
 
-        function sc_error_notice() {
+        /**
+         * WooCommerce warning message
+         * @desc If WC too old, getting an warning message
+         * 
+         * @return string
+         */
+        function wsc_warning() {
             global $current_screen;
             echo '<div class="error"><p>Your <strong>WooCommerce</strong> version is too old. Please update to latest version.</p></div>';
         }
-        add_action( 'admin_notices', 'sc_error_notice' );
+        add_action( 'admin_notices', 'wsc_warning' );
 
-    }
+    endif;
 
-} else {
+else :
 
-    function sales_by_country_error_notice() {
+    /**
+     * Getting notice if WooCommerce not active
+     * 
+     * @return string
+     */
+    function wsc_notice() {
         global $current_screen;
         if ( $current_screen->parent_base == 'plugins' ) {
             echo '<div class="error"><p>'.__( 'The <strong>WooCommerce Sales by Country</strong> plugin requires the <a href="http://wordpress.org/plugins/woocommerce" target="_blank">WooCommerce</a> plugin to be activated in order to work. Please <a href="'.admin_url( 'plugin-install.php?tab=search&type=term&s=WooCommerce' ).'" target="_blank">install WooCommerce</a> or <a href="'.admin_url( 'plugins.php' ).'">activate</a> first.' ).'</p></div>';
         }
     }
-    add_action( 'admin_notices', 'sales_by_country_error_notice' );
+    add_action( 'admin_notices', 'wsc_notice' );
 
-}
+endif;
