@@ -3,7 +3,7 @@
  * Plugin Name: WooCommerce Sales by Country
  * Plugin URI: https://github.com/mhmithu/woocommerce-sales-by-country
  * Description: Adds a report page to display country specific product sales report.
- * Version: 1.4
+ * Version: 1.5
  * Author: MH Mithu
  * Author URI: http://mithu.me/
  * License: GNU General Public License v3.0
@@ -106,7 +106,7 @@ if ( is_plugin_active( 'woocommerce/woocommerce.php' ) ) :
                 <?php foreach ( $wsc->get_country_sales() as $view ) : ?>
                     <tr>
                         <td><?php echo $wsc->country_name( $view->country_name ); ?></td>
-                        <td><?php echo get_woocommerce_currency_symbol() . $view->sale_total; ?></td>
+                        <td><?php echo get_woocommerce_currency_symbol() . round( $view->sale_total, 2 ); ?></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
