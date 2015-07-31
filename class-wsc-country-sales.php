@@ -30,6 +30,8 @@ class WSC_Country_Sales {
     public $version;        // Plugin version
     public $start_date;     // Range start date
     public $end_date;       // Range end date
+    public $country_sales;
+	public $total_sales;
 
 
     /**
@@ -52,38 +54,77 @@ class WSC_Country_Sales {
         add_action( 'admin_enqueue_scripts', array( $this, 'wsc_enqueue' ) );
     }
 
-
     /**
-     * Get country wise total sales
-     *
-     * @access public
-     * @return object
-     */
-    public function get_country_sales() {
-        global $wpdb;
+	 * Set country wise total sales
+	 *
+	 * @access private
+	 */
+	private function set_country_sales() {
+		global $wpdb;
 
-        $sql = "SELECT country.meta_value AS country_name,
-                SUM(order_item_meta.meta_value) AS sale_total
-                FROM {$wpdb->prefix}woocommerce_order_items AS order_items
+		$sql = "SELECT country.meta_value AS country_name,
+				SUM(order_item_meta.meta_value) AS sale_total
+				FROM {$wpdb->prefix}woocommerce_order_items AS order_items
 
-                LEFT JOIN {$wpdb->prefix}woocommerce_order_itemmeta AS order_item_meta
-                    ON order_items.order_item_id = order_item_meta.order_item_id
-                LEFT JOIN {$wpdb->postmeta} AS country
-                    ON order_items.order_id = country.post_id
-                LEFT JOIN {$wpdb->posts} AS posts
-                    ON order_items.order_id = posts.ID
+				LEFT JOIN {$wpdb->prefix}woocommerce_order_itemmeta AS order_item_meta
+					ON order_items.order_item_id = order_item_meta.order_item_id
+				LEFT JOIN {$wpdb->postmeta} AS country
+					ON order_items.order_id = country.post_id
+				LEFT JOIN {$wpdb->posts} AS posts
+					ON order_items.order_id = posts.ID
 
-                WHERE posts.post_type             = 'shop_order'
-                AND   country.meta_key            = '_billing_country'
-                AND   order_item_meta.meta_key    = '_line_total'
-                AND   order_items.order_item_type = 'line_item'
-                AND   posts.post_date            >= '$this->start_date'
-                AND   posts.post_date             < '$this->end_date'
-                AND   posts.post_status IN ('wc-processing','wc-on-hold','wc-completed')
-                GROUP BY country.meta_value";
+				WHERE posts.post_type             = 'shop_order'
+				AND   country.meta_key            = '_billing_country'
+				AND   order_item_meta.meta_key    = '_line_total'
+				AND   order_items.order_item_type = 'line_item'
+				AND   posts.post_date            >= '$this->start_date'
+				AND   posts.post_date             < '$this->end_date'
+				AND   posts.post_status IN ('wc-processing','wc-on-hold','wc-completed')
+				GROUP BY country.meta_value";
 
-        return $wpdb->get_results( $sql );
-    }
+		$this->country_sales = $wpdb->get_results( $sql );
+	}
+
+
+	/**
+	 * Get country wise total sales
+	 *
+	 * @access public
+	 * @return object
+	 */
+	public function get_country_sales() {
+	   if ( ! $this->country_sales ) {
+			$this->set_country_sales();
+	   }
+	   return $this->country_sales;
+	}
+
+	/**
+	 * Get total sales
+	 *
+	 * @access public
+	 * @return object
+	 */
+	public function get_total_sales() {
+	   if ( ! $this->total_sales ) {
+	   		$this->total_sales = array_sum( wp_list_pluck( $this->get_country_sales(), 'sale_total' ) );
+	   }
+	   return $this->total_sales;
+	}
+
+	/**
+	 * Get percentage
+	 *
+	 * @access public
+	 * @return object
+	 */
+	public function get_percentage( $sale_total ) {
+		$perc = false;
+		if ( $total = $this->get_total_sales() ) {
+			$perc = round( ( $sale_total / $total ) * 100 );
+		}
+	  	return $perc ? $perc . '%' : '-';
+	}
 
 
     /**
@@ -113,7 +154,7 @@ class WSC_Country_Sales {
      */
     public function country_name( $name ) {
         $get = new WC_Countries;
-        return $get->countries[$name];
+        return isset( $get->countries[ $name ] ) ? $get->countries[ $name ] : $name;
     }
 
 

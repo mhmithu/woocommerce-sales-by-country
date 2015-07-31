@@ -80,7 +80,7 @@ if ( is_plugin_active( 'woocommerce/woocommerce.php' ) ) :
 
         /**
          * Function to hook into WooCommerce
-         * 
+         *
          * @return string
          */
         function wc_country_sales() {
@@ -99,6 +99,7 @@ if ( is_plugin_active( 'woocommerce/woocommerce.php' ) ) :
                     <tr>
                         <th>Country Name</th>
                         <th>Sale Total</th>
+                        <th>Percentage</th>
                     </tr>
                 </thead>
 
@@ -107,9 +108,21 @@ if ( is_plugin_active( 'woocommerce/woocommerce.php' ) ) :
                     <tr>
                         <td><?php echo $wsc->country_name( $view->country_name ); ?></td>
                         <td><?php echo get_woocommerce_currency_symbol() . round( $view->sale_total, 2 ); ?></td>
+                        <td><?php echo $wsc->get_percentage( $view->sale_total ); ?></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
+
+                <tfoot>
+                    <tr>
+                        <td>
+                           <strong>Total</strong>
+                        </td>
+                        <td colspan="2">
+                            <strong><?php echo get_woocommerce_currency_symbol() . round( $wsc->get_total_sales(), 2 ); ?></strong>
+                        </td>
+                    </tr>
+                </tfoot>
             </table>
 
     <?php
@@ -121,7 +134,7 @@ if ( is_plugin_active( 'woocommerce/woocommerce.php' ) ) :
         /**
          * WooCommerce warning message
          * @desc If WC too old, getting an warning message
-         * 
+         *
          * @return string
          */
         function wsc_warning() {
@@ -136,7 +149,7 @@ else :
 
     /**
      * Getting notice if WooCommerce not active
-     * 
+     *
      * @return string
      */
     function wsc_notice() {
