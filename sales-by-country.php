@@ -106,7 +106,7 @@ if ( is_plugin_active( 'woocommerce/woocommerce.php' ) ) :
                 <?php foreach ( $wsc->get_country_sales() as $view ) : ?>
                     <tr>
                         <td><?php echo $wsc->country_name( $view->country_name ); ?></td>
-                        <td><?php echo get_woocommerce_currency_symbol() . round( $view->sale_total, 2 ); ?></td>
+                        <td><?php echo wc_price($view->sale_total); ?></td>
                     </tr>
                 <?php endforeach; ?>
                 </tbody>
